@@ -14,4 +14,4 @@ import from app {
     create_tweet
 }
 
-# import from import_data { import_data }   # <- uncomment when import_data.jac is written
+import from import_data { seed_profile, seed_tweet, seed_follow }

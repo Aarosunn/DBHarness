@@ -28,6 +28,7 @@ obj ProfileView {
 
 obj TweetView {
     has id: str,
+        seed_id: str,
         content: str,
         author_username: str,
         created_at: str,
@@ -69,7 +70,8 @@ node Profile {
 }
 
 node Tweet {
-    has content: str = "",
+    has seed_id: str = "",
+        content: str = "",
         author_username: str = "",
         created_at: str = "",
         likes: list[str] = [],
@@ -80,6 +82,7 @@ node Tweet {
         is_mine: bool = len(mine) > 0 and self.author_username == mine[0].username;
         return TweetView(
             id=jid(self),
+            seed_id=self.seed_id,
             content=self.content,
             author_username=self.author_username,
             created_at=self.created_at,
@@ -170,7 +173,8 @@ walker load_feed {
 
 # --- Create walkers: navigate to the caller's profile, then attach a node ---
 walker create_tweet {
-    has content: str;
+    has content: str,
+        seed_id: str;
 
     can run with Root entry {
         visit [-->[?:Profile]];
@@ -180,7 +184,8 @@ walker create_tweet {
         new = cast(
             Tweet,
             here +>:Post():+> Tweet(
-                content=self.content, author_username=here.username, created_at=_now()
+                seed_id=self.seed_id, content=self.content,
+                author_username=here.username, created_at=_now()
             )
         );
 
