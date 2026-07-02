@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Jac compiler cache
+.jac/
+
+# Node (any leftover frontend tooling)
+node_modules/
+
+# Generated seeds — reproducible via dataset/generate.py (don't bloat the repo; uniform is ~16M)
+*_seed.json
+
+# Benchmark outputs
+results/*.csv
+
+# Local env / secrets
+.env

@@ -1,0 +1,15 @@
+[project]
+name = "little-x-bench"
+version = "1.0.0"
+description = "Little X - headless backend for the DBHarness benchmark (no frontend)"
+entry-point = "main.jac"
+
+# GTI on by default. The GTI-off ablation flips this to false (fp-new-main uses
+# this run-config bool, NOT the old JAC_INDEX_ENABLED env var).
+[run]
+topology_index = true
+
+# Scale plugin deploys the jac runtime from the verified fork branch.
+[plugins.scale.kubernetes]
+jaseci_repo_url = "https://github.com/cse584-W26/jaseci.git"
+jaseci_branch = "fp-new-main"
