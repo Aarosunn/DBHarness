@@ -101,10 +101,9 @@ RETURN
 """
 
 
-async def _build_profile_view(target_id: str, viewer_id: str) -> ProfileRead:
-    async with driver.session() as session:
-        result = await session.run(PROFILE_VIEW_CYPHER, target_id=target_id)
-        record = await result.single()
+async def _build_profile_view(session, target_id: str, viewer_id: str) -> ProfileRead:
+    result = await session.run(PROFILE_VIEW_CYPHER, target_id=target_id)
+    record = await result.single()
 
     if record is None:
         raise HTTPException(status_code=404, detail="profile not found")
@@ -138,12 +137,16 @@ async def _build_profile_view(target_id: str, viewer_id: str) -> ProfileRead:
 
 @app.get("/profile", response_model=ProfileRead)
 async def get_profile(user_id: str):
-    return await _build_profile_view(target_id=user_id, viewer_id=user_id)
+    async with driver.session() as session:
+        return await _build_profile_view(session, target_id=user_id, viewer_id=user_id)
 
 
 @app.get("/profile/{target_id}", response_model=ProfileRead)
 async def get_profile_by_id(target_id: str, user_id: str):
-    return await _build_profile_view(target_id=target_id, viewer_id=user_id)
+    async with driver.session() as session:
+        return await _build_profile_view(
+            session, target_id=target_id, viewer_id=user_id
+        )
 
 
 # --- Accumulator Endpoints ---

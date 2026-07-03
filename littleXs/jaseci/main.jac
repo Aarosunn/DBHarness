@@ -7,7 +7,6 @@ once that file exists.
 """
 
 import from app {
-    setup_profile,
     get_profile,
     get_profile_by_id,
     load_feed,

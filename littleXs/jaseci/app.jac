@@ -93,30 +93,6 @@ node Tweet {
     }
 }
 # --- Profile walkers: spawn at the caller's root, act on their profile ---
-walker setup_profile {
-    has username: str = "",
-        bio: str = "",
-        reports: list[ProfileView] = [];
-
-    can run with Root entry {
-        visit [-->[?:Profile]] else {
-            fresh = here ++> Profile(created_at=_now());
-            grant(fresh, level=ConnectPerm);
-            visit fresh;
-        }
-    }
-
-    can apply with Profile entry {
-        if self.username {
-            here.username = self.username;
-        }
-        if self.bio {
-            here.bio = self.bio;
-        }
-        report here.to_profile_view();
-    }
-}
-
 walker get_profile {
     has reports: list[ProfileView] = [];
 
