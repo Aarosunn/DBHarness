@@ -20,9 +20,12 @@ walker:priv seed_profile {
         bio: str = "";
 
     can run with Root entry {
+        # fork semantics: ++> returns the connected NODE, not a list.
+        # ConnectPerm (not Read): followers create Follow edges INTO this
+        # profile from foreign roots — edge_write needs CONNECT on the target.
         p = here ++> Profile(username=self.username, bio=self.bio);
-        grant(p[0], level=ReadPerm);
-        report jid(p[0]);
+        grant(p, level=ConnectPerm);
+        report jid(p);
     }
 }
 
@@ -46,8 +49,8 @@ walker:priv seed_tweet {
             author_username=self.author_username,
             created_at=self.created_at
         );
-        grant(t[0], level=ReadPerm);
-        report jid(t[0]);
+        grant(t, level=ReadPerm);
+        report jid(t);
     }
 }
 

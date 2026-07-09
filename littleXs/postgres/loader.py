@@ -15,7 +15,7 @@ from psycopg.types.json import Json
 from app import SCHEMA
 
 DATABASE_URL = os.environ.get(
-    "DATABASE_URL", "postgresql://postgres@localhost:5432/littleX"
+    "DATABASE_URL", "postgresql://postgres@localhost:5433/littleX"
 )
 
 DEFAULT_SEED_PATH = Path(__file__).parent.parent.parent / "dataset" / "correctness_seed.json"

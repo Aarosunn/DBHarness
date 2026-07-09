@@ -9,7 +9,7 @@ from typing import AsyncGenerator
 from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy import ForeignKey, Index, Text, select, or_
+from sqlalchemy import ForeignKey, Index, Text, select, or_, func
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import (
     DeclarativeBase,
@@ -19,16 +19,34 @@ from sqlalchemy.orm import (
     selectinload,
     joinedload,
 )
-from sqlalchemy.sql import func
 
+import jwt
 from fastapi import FastAPI, HTTPException, Depends
+from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
+
+
+# --- Auth ---
+
+
+JWT_SECRET = os.environ.get("JWT_SECRET", "supersecretkey_for_testing_only!")
+JWT_ALGORITHM = "HS256"
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
+
+def get_current_user_id(token: str = Depends(oauth2_scheme)) -> int:
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        return int(payload["user_id"])
+    except Exception:
+        raise HTTPException(status_code=401, detail="invalid token")
+
 
 # --- SETUP ---
 
 
 DATABASE_URL = os.environ.get(
-    "DATABASE_URL", "postgresql+psycopg://postgres@localhost:5432/littleX"
+    "DATABASE_URL", "postgresql+psycopg://postgres@localhost:5433/littleX"
 )
 
 engine = create_async_engine(DATABASE_URL)
@@ -197,13 +215,18 @@ async def _build_profile_view(
 
 
 @app.get("/profile", response_model=ProfileRead)
-async def get_profile(user_id: int, session: AsyncSession = Depends(get_session)):
+async def get_profile(
+    user_id: int = Depends(get_current_user_id),
+    session: AsyncSession = Depends(get_session),
+):
     return await _build_profile_view(session, target_id=user_id, viewer_id=user_id)
 
 
 @app.get("/profile/{target_id}", response_model=ProfileRead)
 async def get_profile_by_id(
-    target_id: int, user_id: int, session: AsyncSession = Depends(get_session)
+    target_id: int,
+    user_id: int = Depends(get_current_user_id),
+    session: AsyncSession = Depends(get_session),
 ):
     return await _build_profile_view(session, target_id=target_id, viewer_id=user_id)
 
@@ -212,7 +235,10 @@ async def get_profile_by_id(
 
 
 @app.get("/feed", response_model=list[TweetRead])
-async def get_feed(user_id: int, session: AsyncSession = Depends(get_session)):
+async def get_feed(
+    user_id: int = Depends(get_current_user_id),
+    session: AsyncSession = Depends(get_session),
+):
     following_ids = (
         select(Follow.followee_id)
         .where(Follow.follower_id == user_id)
@@ -250,7 +276,9 @@ async def get_feed(user_id: int, session: AsyncSession = Depends(get_session)):
 
 @app.post("/tweet", response_model=TweetRead)
 async def create_tweet(
-    user_id: int, body: TweetCreate, session: AsyncSession = Depends(get_session)
+    body: TweetCreate,
+    user_id: int = Depends(get_current_user_id),
+    session: AsyncSession = Depends(get_session),
 ):
     author = await session.get(Profile, user_id)
     if author is None:

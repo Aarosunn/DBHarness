@@ -14,3 +14,5 @@ import from app {
 }
 
 import from import_data { seed_profile, seed_tweet, seed_follow }
+
+import from probe_sv { runtime_probe, noop }

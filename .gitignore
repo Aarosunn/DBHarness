@@ -14,8 +14,9 @@ node_modules/
 # Generated seeds — reproducible via dataset/generate.py (don't bloat the repo; uniform is ~16M)
 *_seed.json
 
-# Benchmark outputs
-results/*.csv
+# Benchmark outputs (any depth) + rendered plots
+results/**/*.csv
+results/plots/
 
 # Local env / secrets
 .env

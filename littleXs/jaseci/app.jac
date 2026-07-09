@@ -53,10 +53,10 @@ node Profile {
         return UserView(id=jid(self), username=self.username, bio=self.bio);
     }
 
-    def to_profile_view -> ProfileView {
+    def to_profile_view(viewer_username: str) -> ProfileView {
         followers = [p.to_user_view() for p in [self<-:Follow:<-[?:Profile]]];
         following = [p.to_user_view() for p in [self->:Follow:->[?:Profile]]];
-        tweets = [t.to_view() for t in [self-->[?:Tweet]]];
+        tweets = [t.to_view(viewer_username) for t in [self-->[?:Tweet]]];
         tweets.sort(key=lambda t: TweetView : t.created_at, reverse=True);
         return ProfileView(
             id=jid(self),
@@ -77,9 +77,7 @@ node Tweet {
         likes: list[str] = [],
         comments: list[dict[str, str]] = [];
 
-    def to_view -> TweetView {
-        mine = [root-->[?:Profile]];
-        is_mine: bool = len(mine) > 0 and self.author_username == mine[0].username;
+    def to_view(viewer_username: str) -> TweetView {
         return TweetView(
             id=jid(self),
             seed_id=self.seed_id,
@@ -88,7 +86,7 @@ node Tweet {
             created_at=self.created_at,
             likes=self.likes,
             comments=self.comments,
-            is_mine=is_mine
+            is_mine=(self.author_username == viewer_username)
         );
     }
 }
@@ -101,15 +99,20 @@ walker get_profile {
     }
 
     can give with Profile entry {
-        report here.to_profile_view();
+        report here.to_profile_view(here.username);
     }
 }
 
 walker get_profile_by_id {
     has target_id: str = "",
+        viewer_username: str = "",
         reports: list[ProfileView] = [];
 
     can run with Root entry {
+        mine = [-->[?:Profile]];
+        if mine {
+            self.viewer_username = mine[0].username;
+        }
         if self.target_id {
             target = jobj(self.target_id);
             if isinstance(target, Profile) {
@@ -119,26 +122,32 @@ walker get_profile_by_id {
     }
 
     can give with Profile entry {
-        report here.to_profile_view();
+        report here.to_profile_view(self.viewer_username);
     }
 }
 
 # --- Acucumulator walkers: fan out, gather at each node, report once at exit ---
 walker load_feed {
     has feed: list[TweetView] = [],
-        reports: list[list[TweetView]] = [];
+        reports: list[list[TweetView]] = [],
+        viewer_username: str = "",
+        seen: set = set();
 
     can run with Root entry {
         mine = [-->[?:Profile]];
         if mine {
             me = mine[0];
+            self.viewer_username = me.username;
             visit [me-->[?:Tweet]];
             visit [me->:Follow:->[?:Profile]-->[?:Tweet]];
         }
     }
 
     can gather with Tweet entry {
-        self.feed.append(here.to_view());
+        if jid(here) not in self.seen {
+            self.seen.add(jid(here));
+            self.feed.append(here.to_view(self.viewer_username));
+        }
     }
 
     can deliver with Root exit {
@@ -160,12 +169,14 @@ walker create_tweet {
         new = cast(
             Tweet,
             here +>:Post():+> Tweet(
-                seed_id=self.seed_id, content=self.content,
-                author_username=here.username, created_at=_now()
+                seed_id=self.seed_id,
+                content=self.content,
+                author_username=here.username,
+                created_at=_now()
             )
         );
 
         grant(new, level=WritePerm);
-        report new.to_view();
+        report new.to_view(here.username);
     }
 }

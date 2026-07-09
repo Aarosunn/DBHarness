@@ -7,9 +7,29 @@ import os
 from contextlib import asynccontextmanager
 from datetime import datetime
 
-from fastapi import FastAPI, HTTPException
+import jwt
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.security import OAuth2PasswordBearer
+
 from psycopg_pool import AsyncConnectionPool
 from pydantic import BaseModel
+
+
+# --- Auth ---
+
+
+JWT_SECRET = os.environ.get("JWT_SECRET", "supersecretkey_for_testing_only!")
+JWT_ALGORITHM = "HS256"
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
+
+def get_current_user_id(token: str = Depends(oauth2_scheme)) -> int:
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        return int(payload["user_id"])
+    except Exception:
+        raise HTTPException(status_code=401, detail="invalid token")
+
 
 # --- SETUP ---
 
@@ -43,7 +63,7 @@ CREATE INDEX IF NOT EXISTS idx_tweets_author_created
 """
 
 DATABASE_URL = os.environ.get(
-    "DATABASE_URL", "postgresql://postgres@localhost:5432/littleX"
+    "DATABASE_URL", "postgresql://postgres@localhost:5433/littleX"
 )
 
 pool = AsyncConnectionPool(
@@ -176,13 +196,15 @@ async def _build_profile_view(
 
 
 @app.get("/profile", response_model=ProfileRead)
-async def get_profile(user_id: int):
+async def get_profile(user_id: int = Depends(get_current_user_id)):
     async with pool.connection() as conn:
         return await _build_profile_view(conn, target_id=user_id, viewer_id=user_id)
 
 
 @app.get("/profile/{target_id}", response_model=ProfileRead)
-async def get_profile_by_id(target_id: int, user_id: int):
+async def get_profile_by_id(
+    target_id: int, user_id: int = Depends(get_current_user_id)
+):
     async with pool.connection() as conn:
         return await _build_profile_view(conn, target_id=target_id, viewer_id=user_id)
 
@@ -201,7 +223,7 @@ ORDER BY t.created_at DESC
 
 
 @app.get("/feed", response_model=list[TweetRead])
-async def get_feed(user_id: int):
+async def get_feed(user_id: int = Depends(get_current_user_id)):
     async with pool.connection() as conn:
         cur = await conn.execute(FEED_SQL, {"me": user_id})
         rows = await cur.fetchall()
@@ -226,7 +248,7 @@ async def get_feed(user_id: int):
 
 
 @app.post("/tweet", response_model=TweetRead)
-async def create_tweet(user_id: int, body: TweetCreate):
+async def create_tweet(body: TweetCreate, user_id: int = Depends(get_current_user_id)):
     async with pool.connection() as conn:
         cur = await conn.execute(
             "SELECT username FROM profiles WHERE id = %s", (user_id,)

@@ -7,10 +7,29 @@ import os
 from contextlib import asynccontextmanager
 from datetime import datetime
 
-from fastapi import FastAPI, HTTPException
+import jwt
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.security import OAuth2PasswordBearer
 from neo4j import AsyncGraphDatabase
 from pydantic import BaseModel
 from typing import LiteralString
+
+
+# --- Auth ---
+
+
+JWT_SECRET = os.environ.get("JWT_SECRET", "supersecretkey_for_testing_only!")
+JWT_ALGORITHM = "HS256"
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
+
+def get_current_user_id(token: str = Depends(oauth2_scheme)) -> str:
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        return str(payload["user_id"])
+    except Exception:
+        raise HTTPException(status_code=401, detail="invalid token")
+
 
 # --- SETUP ---
 
@@ -136,13 +155,15 @@ async def _build_profile_view(session, target_id: str, viewer_id: str) -> Profil
 
 
 @app.get("/profile", response_model=ProfileRead)
-async def get_profile(user_id: str):
+async def get_profile(user_id: str = Depends(get_current_user_id)):
     async with driver.session() as session:
         return await _build_profile_view(session, target_id=user_id, viewer_id=user_id)
 
 
 @app.get("/profile/{target_id}", response_model=ProfileRead)
-async def get_profile_by_id(target_id: str, user_id: str):
+async def get_profile_by_id(
+    target_id: str, user_id: str = Depends(get_current_user_id)
+):
     async with driver.session() as session:
         return await _build_profile_view(
             session, target_id=target_id, viewer_id=user_id
@@ -162,7 +183,7 @@ ORDER BY t.created_at DESC
 
 
 @app.get("/feed", response_model=list[TweetRead])
-async def get_feed(user_id: str):
+async def get_feed(user_id: str = Depends(get_current_user_id)):
     async with driver.session() as session:
         result = await session.run(FEED_CYPHER, user_id=user_id)
         records = [r async for r in result]
@@ -204,7 +225,7 @@ RETURN t.id AS id, t.seed_id AS seed_id, t.content AS content,
 
 
 @app.post("/tweet", response_model=TweetRead)
-async def create_tweet(user_id: str, body: TweetCreate):
+async def create_tweet(body: TweetCreate, user_id: str = Depends(get_current_user_id)):
     async with driver.session() as session:
         result = await session.run(
             CREATE_TWEET_CYPHER,
