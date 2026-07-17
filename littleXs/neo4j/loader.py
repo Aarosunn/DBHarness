@@ -9,13 +9,16 @@ from pathlib import Path
 
 from neo4j import GraphDatabase
 
-from app import CONSTRAINTS, NEO4J_PASSWORD, NEO4J_URI, NEO4J_USER
+from app import CONSTRAINTS, NEO4J_PASSWORD, NEO4J_URI, NEO4J_USER, _now
 
 DEFAULT_SEED_PATH = Path(__file__).parent.parent.parent / "dataset" / "correctness_seed.json"
 
+# created_at stored as an ISO-8601 string (matches jaseci's _now()), not a
+# native Cypher temporal type -> avoids the neo4j.time/pytz hydration tax on
+# every read. See app.py::_now.
 PROFILES_CYPHER = """
 UNWIND $rows AS row
-CREATE (p:Profile {id: randomUUID(), username: row.username, bio: row.bio, created_at: datetime()})
+CREATE (p:Profile {id: randomUUID(), username: row.username, bio: row.bio, created_at: $now})
 RETURN row.id AS seed_id, p.id AS neo4j_id
 """
 
@@ -33,7 +36,7 @@ CREATE (author)-[:POSTED]->(:Tweet {
     seed_id: row.seed_id,
     content: row.content,
     author_username: author.username,
-    created_at: datetime(row.created_at),
+    created_at: row.created_at,
     likes: row.likes,
     comments: []
 })
@@ -49,7 +52,7 @@ def load(seed_path: Path) -> None:
             for stmt in CONSTRAINTS:
                 session.run(stmt)
 
-            result = session.run(PROFILES_CYPHER, rows=seed["profiles"])
+            result = session.run(PROFILES_CYPHER, rows=seed["profiles"], now=_now())
             profile_id_map = {r["seed_id"]: r["neo4j_id"] for r in result}
             assert len(profile_id_map) == len(seed["profiles"])
             print(f"profiles inserted: {len(profile_id_map)}")

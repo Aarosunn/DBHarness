@@ -5,10 +5,11 @@ Database abstracted in the language runtime research
 
 import os
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import UTC, datetime
+import time
 
 import jwt
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Response
 from fastapi.security import OAuth2PasswordBearer
 from neo4j import AsyncGraphDatabase
 from pydantic import BaseModel
@@ -21,6 +22,12 @@ from typing import LiteralString
 JWT_SECRET = os.environ.get("JWT_SECRET", "supersecretkey_for_testing_only!")
 JWT_ALGORITHM = "HS256"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
+
+def _now() -> str:
+    # ponytail: matches jaseci's _now() exactly (str, not native temporal) so
+    # created_at is fairness-symmetric across engines and sorts lexicographically.
+    return datetime.now(UTC).replace(tzinfo=None).isoformat() + "Z"
 
 
 def get_current_user_id(token: str = Depends(oauth2_scheme)) -> str:
@@ -75,7 +82,7 @@ class TweetRead(BaseModel):
     author_id: str
     author_username: str
     content: str
-    created_at: datetime
+    created_at: str
     likes: list[str] = []
     comments: list[dict[str, str]] = []
     is_mine: bool = False
@@ -90,7 +97,7 @@ class ProfileRead(BaseModel):
     id: str
     username: str
     bio: str
-    created_at: datetime
+    created_at: str
     followers: list[UserSummary]
     following: list[UserSummary]
     tweets: list[TweetRead]
@@ -135,7 +142,7 @@ async def _build_profile_view(session, target_id: str, viewer_id: str) -> Profil
             author_id=target_id,
             author_username=t["author_username"],
             content=t["content"],
-            created_at=t["created_at"].to_native(),
+            created_at=t["created_at"],
             likes=t["likes"],
             comments=t["comments"],
             is_mine=is_mine,
@@ -147,7 +154,7 @@ async def _build_profile_view(session, target_id: str, viewer_id: str) -> Profil
         id=record["id"],
         username=record["username"],
         bio=record["bio"],
-        created_at=record["created_at"].to_native(),
+        created_at=record["created_at"],
         followers=[UserSummary(**f) for f in record["followers"]],
         following=[UserSummary(**f) for f in record["following"]],
         tweets=tweets,
@@ -155,19 +162,33 @@ async def _build_profile_view(session, target_id: str, viewer_id: str) -> Profil
 
 
 @app.get("/profile", response_model=ProfileRead)
-async def get_profile(user_id: str = Depends(get_current_user_id)):
+async def get_profile(
+    response: Response, user_id: str = Depends(get_current_user_id)
+):
+    t0 = time.perf_counter()
+
     async with driver.session() as session:
-        return await _build_profile_view(session, target_id=user_id, viewer_id=user_id)
+        profile = await _build_profile_view(
+            session, target_id=user_id, viewer_id=user_id
+        )
+
+    response.headers["x-server-total-ms"] = f"{(time.perf_counter() - t0) * 1000:.3f}"
+    return profile
 
 
 @app.get("/profile/{target_id}", response_model=ProfileRead)
 async def get_profile_by_id(
-    target_id: str, user_id: str = Depends(get_current_user_id)
+    target_id: str, response: Response, user_id: str = Depends(get_current_user_id)
 ):
+    t0 = time.perf_counter()
+
     async with driver.session() as session:
-        return await _build_profile_view(
+        profile = await _build_profile_view(
             session, target_id=target_id, viewer_id=user_id
         )
+
+    response.headers["x-server-total-ms"] = f"{(time.perf_counter() - t0) * 1000:.3f}"
+    return profile
 
 
 # --- Accumulator Endpoints ---
@@ -183,19 +204,23 @@ ORDER BY t.created_at DESC
 
 
 @app.get("/feed", response_model=list[TweetRead])
-async def get_feed(user_id: str = Depends(get_current_user_id)):
+async def get_feed(
+    response: Response, user_id: str = Depends(get_current_user_id)
+):
+    t0 = time.perf_counter()
+
     async with driver.session() as session:
         result = await session.run(FEED_CYPHER, user_id=user_id)
         records = [r async for r in result]
 
-    return [
+    feed = [
         TweetRead(
             id=r["id"],
             seed_id=r["seed_id"],
             author_id=r["author_id"],
             author_username=r["author_username"],
             content=r["content"],
-            created_at=r["created_at"].to_native(),
+            created_at=r["created_at"],
             likes=r["likes"],
             comments=r["comments"],
             is_mine=(r["author_id"] == user_id),
@@ -203,7 +228,13 @@ async def get_feed(user_id: str = Depends(get_current_user_id)):
         for r in records
     ]
 
+    response.headers["x-server-total-ms"] = f"{(time.perf_counter() - t0) * 1000:.3f}"
+    return feed
 
+
+# TODO(you): feed_page endpoint — FEED_PAGE_CYPHER = FEED_CYPHER + "LIMIT 20\n",
+# clone get_feed on @app.get("/feed_page") with the new query.
+# Benched 2026-07-16 at p50=4.80ms then removed for you to reimplement.
 # --- Create Endpoints ---
 
 
@@ -214,7 +245,7 @@ CREATE (author)-[:POSTED]->(t:Tweet {
     seed_id: $seed_id,
     content: $content,
     author_username: author.username,
-    created_at: datetime(),
+    created_at: $created_at,
     likes: [],
     comments: []
 })
@@ -225,27 +256,35 @@ RETURN t.id AS id, t.seed_id AS seed_id, t.content AS content,
 
 
 @app.post("/tweet", response_model=TweetRead)
-async def create_tweet(body: TweetCreate, user_id: str = Depends(get_current_user_id)):
+async def create_tweet(
+    body: TweetCreate, response: Response, user_id: str = Depends(get_current_user_id)
+):
+    t0 = time.perf_counter()
+
     async with driver.session() as session:
         result = await session.run(
             CREATE_TWEET_CYPHER,
             author_id=user_id,
             seed_id=body.seed_id,
             content=body.content,
+            created_at=_now(),
         )
         record = await result.single()
 
     if record is None:
         raise HTTPException(status_code=404, detail="profile not found")
 
-    return TweetRead(
+    created = TweetRead(
         id=record["id"],
         seed_id=record["seed_id"],
         author_id=record["author_id"],
         author_username=record["author_username"],
         content=record["content"],
-        created_at=record["created_at"].to_native(),
+        created_at=record["created_at"],
         likes=[],
         comments=[],
         is_mine=True,
     )
+
+    response.headers["x-server-total-ms"] = f"{(time.perf_counter() - t0) * 1000:.3f}"
+    return created
