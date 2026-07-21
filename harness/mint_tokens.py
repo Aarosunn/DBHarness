@@ -70,9 +70,11 @@ def main():
 
     tokens = mint(users, args.expiry_days)
 
-    output = args.output or os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), f"tokens.{args.engine}.json"
+    tokens_dir = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "tokens"
     )
+    os.makedirs(tokens_dir, exist_ok=True)
+    output = args.output or os.path.join(tokens_dir, f"tokens.{args.engine}.json")
     with open(output, "w") as f:
         json.dump(tokens, f)
 

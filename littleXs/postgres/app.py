@@ -6,9 +6,10 @@ Database abstracted in the language runtime research
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime
+import time
 
 import jwt
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Response
 from fastapi.security import OAuth2PasswordBearer
 
 from psycopg_pool import AsyncConnectionPool
@@ -196,17 +197,29 @@ async def _build_profile_view(
 
 
 @app.get("/profile", response_model=ProfileRead)
-async def get_profile(user_id: int = Depends(get_current_user_id)):
+async def get_profile(response: Response, user_id: int = Depends(get_current_user_id)):
+    t0 = time.perf_counter()
+
     async with pool.connection() as conn:
-        return await _build_profile_view(conn, target_id=user_id, viewer_id=user_id)
+        profile = await _build_profile_view(conn, target_id=user_id, viewer_id=user_id)
+
+    response.headers["x-server-total-ms"] = f"{(time.perf_counter() - t0) * 1000:.3f}"
+    return profile
 
 
 @app.get("/profile/{target_id}", response_model=ProfileRead)
 async def get_profile_by_id(
-    target_id: int, user_id: int = Depends(get_current_user_id)
+    target_id: int, response: Response, user_id: int = Depends(get_current_user_id)
 ):
+    t0 = time.perf_counter()
+
     async with pool.connection() as conn:
-        return await _build_profile_view(conn, target_id=target_id, viewer_id=user_id)
+        profile = await _build_profile_view(
+            conn, target_id=target_id, viewer_id=user_id
+        )
+
+    response.headers["x-server-total-ms"] = f"{(time.perf_counter() - t0) * 1000:.3f}"
+    return profile
 
 
 # --- Accumulator Endpoints ---
@@ -223,12 +236,14 @@ ORDER BY t.created_at DESC
 
 
 @app.get("/feed", response_model=list[TweetRead])
-async def get_feed(user_id: int = Depends(get_current_user_id)):
+async def get_feed(response: Response, user_id: int = Depends(get_current_user_id)):
+    t0 = time.perf_counter()
+
     async with pool.connection() as conn:
         cur = await conn.execute(FEED_SQL, {"me": user_id})
         rows = await cur.fetchall()
 
-    return [
+    feed = [
         TweetRead(
             id=r[0],
             seed_id=r[1],
@@ -243,12 +258,26 @@ async def get_feed(user_id: int = Depends(get_current_user_id)):
         for r in rows
     ]
 
+    response.headers["x-server-total-ms"] = f"{(time.perf_counter() - t0) * 1000:.3f}"
+    return feed
 
+
+# TODO(you): feed_page endpoint — top-20 newest, exact parity with the jac
+# load_feed_page walker. Benched 2026-07-16 at p50=1.51ms then removed so you
+# can implement it yourself. Recipe (full code in
+# JaseciFork-pgrel/docs/superpowers/plans/2026-07-13-projection-pushdown.md, Task 11):
+#   FEED_PAGE_SQL = FEED_SQL + "LIMIT 20\n"   (FEED_SQL already ends with ORDER BY ... DESC)
+#   @app.get("/feed_page", response_model=list[TweetRead]) — clone get_feed,
+#   swap the SQL, keep the x-server-total-ms header.
 # --- Create Endpoints ---
 
 
 @app.post("/tweet", response_model=TweetRead)
-async def create_tweet(body: TweetCreate, user_id: int = Depends(get_current_user_id)):
+async def create_tweet(
+    body: TweetCreate, response: Response, user_id: int = Depends(get_current_user_id)
+):
+    t0 = time.perf_counter()
+
     async with pool.connection() as conn:
         cur = await conn.execute(
             "SELECT username FROM profiles WHERE id = %s", (user_id,)
@@ -270,7 +299,7 @@ async def create_tweet(body: TweetCreate, user_id: int = Depends(get_current_use
         assert result is not None
         tid, created_at = result
 
-    return TweetRead(
+    tweet = TweetRead(
         id=tid,
         seed_id=body.seed_id,
         author_id=user_id,
@@ -281,3 +310,6 @@ async def create_tweet(body: TweetCreate, user_id: int = Depends(get_current_use
         comments=[],
         is_mine=True,
     )
+
+    response.headers["x-server-total-ms"] = f"{(time.perf_counter() - t0) * 1000:.3f}"
+    return tweet

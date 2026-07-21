@@ -7,6 +7,7 @@ import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 from datetime import datetime
+import time
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy import ForeignKey, Index, Text, select, or_, func
@@ -21,7 +22,7 @@ from sqlalchemy.orm import (
 )
 
 import jwt
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Response
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 
@@ -216,19 +217,33 @@ async def _build_profile_view(
 
 @app.get("/profile", response_model=ProfileRead)
 async def get_profile(
+    response: Response,
     user_id: int = Depends(get_current_user_id),
     session: AsyncSession = Depends(get_session),
 ):
-    return await _build_profile_view(session, target_id=user_id, viewer_id=user_id)
+    t0 = time.perf_counter()
+
+    profile = await _build_profile_view(session, target_id=user_id, viewer_id=user_id)
+
+    response.headers["x-server-total-ms"] = f"{(time.perf_counter() - t0) * 1000:.3f}"
+    return profile
 
 
 @app.get("/profile/{target_id}", response_model=ProfileRead)
 async def get_profile_by_id(
     target_id: int,
+    response: Response,
     user_id: int = Depends(get_current_user_id),
     session: AsyncSession = Depends(get_session),
 ):
-    return await _build_profile_view(session, target_id=target_id, viewer_id=user_id)
+    t0 = time.perf_counter()
+
+    profile = await _build_profile_view(
+        session, target_id=target_id, viewer_id=user_id
+    )
+
+    response.headers["x-server-total-ms"] = f"{(time.perf_counter() - t0) * 1000:.3f}"
+    return profile
 
 
 # --- Accumulator Endpoints ---
@@ -236,9 +251,12 @@ async def get_profile_by_id(
 
 @app.get("/feed", response_model=list[TweetRead])
 async def get_feed(
+    response: Response,
     user_id: int = Depends(get_current_user_id),
     session: AsyncSession = Depends(get_session),
 ):
+    t0 = time.perf_counter()
+
     following_ids = (
         select(Follow.followee_id)
         .where(Follow.follower_id == user_id)
@@ -255,7 +273,7 @@ async def get_feed(
     result = await session.execute(stmt)
     tweets = result.scalars().all()
 
-    return [
+    feed = [
         TweetRead(
             id=t.id,
             seed_id=t.seed_id,
@@ -270,16 +288,25 @@ async def get_feed(
         for t in tweets
     ]
 
+    response.headers["x-server-total-ms"] = f"{(time.perf_counter() - t0) * 1000:.3f}"
+    return feed
 
+
+# TODO(you): feed_page endpoint — clone get_feed as get_feed_page on
+# @app.get("/feed_page"), one change: .order_by(Tweet.created_at.desc()).limit(20).
+# Benched 2026-07-16 at p50=2.43ms then removed for you to reimplement.
 # --- Create Endpoints ---
 
 
 @app.post("/tweet", response_model=TweetRead)
 async def create_tweet(
     body: TweetCreate,
+    response: Response,
     user_id: int = Depends(get_current_user_id),
     session: AsyncSession = Depends(get_session),
 ):
+    t0 = time.perf_counter()
+
     author = await session.get(Profile, user_id)
     if author is None:
         raise HTTPException(status_code=404, detail="profile not found")
@@ -289,7 +316,7 @@ async def create_tweet(
     await session.commit()
     await session.refresh(tweet)
 
-    return TweetRead(
+    created = TweetRead(
         id=tweet.id,
         seed_id=tweet.seed_id,
         author_id=tweet.author_id,
@@ -300,3 +327,6 @@ async def create_tweet(
         comments=tweet.comments,
         is_mine=True,
     )
+
+    response.headers["x-server-total-ms"] = f"{(time.perf_counter() - t0) * 1000:.3f}"
+    return created

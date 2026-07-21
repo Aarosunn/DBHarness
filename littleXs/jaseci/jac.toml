@@ -6,6 +6,12 @@ entry-point = "main.jac"
 
 [run]
 topology_index = true
+cross_root_resolve = true
+batch_l3 = true
+
+# fp-new-main flattened [plugins.scale.database] -> [scale.database]
+[scale.database]
+mongodb_uri = "mongodb://localhost:27017"
 
 [plugins.client]
 debug = false

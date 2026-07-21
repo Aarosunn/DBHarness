@@ -5,6 +5,10 @@ then plot the full jac optimization ladder next to the baselines.
 Reads the latest row of each per-condition file in results/csv/, writes
 results/csv/ladder_merged.csv, renders results/plots/feed_ladder.png.
 
+NOTE: the per-condition CSVs are LEGACY CLIENT round-trip numbers (pre
+server-side-metric decision, p50_ms columns). Do not mix with the new
+server_* columns from run.py - rerun the ladder to regenerate.
+
 Usage:
     python plot_ladder.py
 """
@@ -18,7 +22,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-CSV_DIR = SCRIPT_DIR.parent / "results" / "csv"
+REPO_DIR = SCRIPT_DIR.parent.parent  # harness/plots/ -> DBHarness/
+CSV_DIR = REPO_DIR / "results" / "csv"
 MARK = "#1d1d20"
 
 # jac ladder: sequential orange ramp, light -> dark = more optimization
@@ -94,7 +99,7 @@ def main():
     ax.legend(frameon=False, fontsize=9, loc="upper right")
     ax.set_ylim(0, max(p99) * 1.15)
 
-    out_png = SCRIPT_DIR.parent / "results" / "plots" / "feed_ladder.png"
+    out_png = REPO_DIR / "results" / "plots" / "feed_ladder.png"
     out_png.parent.mkdir(parents=True, exist_ok=True)
     fig.tight_layout()
     fig.savefig(out_png)

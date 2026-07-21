@@ -12,13 +12,14 @@ membership checks pass.
 Usage:
     python oracle.py [--seed ../dataset/correctness_seed.json]
                      [--engines jaseci,postgres,sqlalchemy,neo4j]
-                     [--tokens-dir .] [--users N] [--url-<engine> URL]
+                     [--tokens-dir ./tokens] [--users N] [--url-<engine> URL]
 
 Wire shapes (verified against the servers):
-    baselines: GET /feed, Bearer auth -> JSON list of tweets with `seed_id`.
+    baselines: GET /feed, Bearer auth -> JSON list of tweets with `seed_id`
+               (+ x-server-total-ms header, ignored here).
     jaseci:    POST /walker/load_feed, Bearer auth, body {} ->
-               {"ok": bool, "data": {"result": ..., "reports": [[tweet,...]]},
-                "error": ...}; the feed list is data.reports[0].
+               {"ok": bool, "data": {"result": ..., "reports": [...]}, ...};
+               reports[0] = {"server_total_ms": float, "feed": [tweet, ...]}.
 """
 
 import argparse
@@ -35,6 +36,7 @@ except ImportError:  # ponytail: same .get/.post/.json surface for our use
     import requests as http
 
 SCRIPT_DIR = Path(__file__).resolve().parent
+TOKENS_DIR = SCRIPT_DIR / "tokens"
 ENGINES = ["jaseci", "postgres", "sqlalchemy", "neo4j"]
 DEFAULT_URLS = {
     "jaseci": "http://localhost:8000",
@@ -78,15 +80,24 @@ def fetch_feed(engine, base_url, token):
         )
         r.raise_for_status()
         body = r.json()
-        if not body.get("ok"):
-            raise RuntimeError(f"walker error: {body.get('error')}")
-        reports = body["data"]["reports"]
-        return reports[0] if reports else []
+        data = body.get("data") or {}
+        if "reports" in data:  # classic envelope
+            if not body.get("ok"):
+                raise RuntimeError(f"walker error: {body.get('error')}")
+            reports = data["reports"]
+            return reports[0]["feed"] if reports else []
+        return body["feed"]  # lean-response mode: body IS the report
     r = http.get(f"{base_url}/feed", headers=headers, timeout=TIMEOUT)
     r.raise_for_status()
     return r.json()
 
 
+# TODO(you): feed_page parity — expected_pages(seed, expected) computes the
+# per-user ordered top-20 (sort ids by seed created_at desc, take 20; stamps
+# are unique so no tie handling needed), fetch_feed_page() hits
+# /walker/load_feed_page / GET /feed_page, and a --page flag switches the main
+# loop to an ordered-list compare. Ran 2026-07-16: 20/20 jac + 100/100 each
+# baseline before removal.
 def order_violations(tweets):
     """Indexes where created_at increases (feed must be newest-first)."""
     stamps = [
@@ -101,7 +112,7 @@ def main():
         "--seed", default=str(SCRIPT_DIR / ".." / "dataset" / "correctness_seed.json")
     )
     parser.add_argument("--engines", default=",".join(ENGINES))
-    parser.add_argument("--tokens-dir", default=str(SCRIPT_DIR))
+    parser.add_argument("--tokens-dir", default=str(TOKENS_DIR))
     parser.add_argument(
         "--users", type=int, default=None, help="check only the first N seeded users"
     )

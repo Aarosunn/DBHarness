@@ -4,6 +4,7 @@ Database abstracted in the language runtime research
 """
 
 import datetime;
+import time;
 import from typing { cast }
 
 def _now -> str {
@@ -92,23 +93,30 @@ node Tweet {
 }
 # --- Profile walkers: spawn at the caller's root, act on their profile ---
 walker get_profile {
-    has reports: list[ProfileView] = [];
+    has reports: list[dict] = [],
+        t0: float = 0.0;
 
     can run with Root entry {
+        self.t0 = time.perf_counter();
         visit [-->[?:Profile]];
     }
 
     can give with Profile entry {
-        report here.to_profile_view(here.username);
+        profile = here.to_profile_view(here.username);
+        server_total_ms = (time.perf_counter() - self.t0) * 1000;
+        report {"server_total_ms": server_total_ms, "profile": profile};
     }
 }
 
 walker get_profile_by_id {
     has target_id: str = "",
         viewer_username: str = "",
-        reports: list[ProfileView] = [];
+        reports: list[dict] = [],
+        t0: float = 0.0;
 
     can run with Root entry {
+        self.t0 = time.perf_counter();
+
         mine = [-->[?:Profile]];
         if mine {
             self.viewer_username = mine[0].username;
@@ -122,18 +130,23 @@ walker get_profile_by_id {
     }
 
     can give with Profile entry {
-        report here.to_profile_view(self.viewer_username);
+        profile = here.to_profile_view(self.viewer_username);
+        server_total_ms = (time.perf_counter() - self.t0) * 1000;
+        report {"server_total_ms": server_total_ms, "profile": profile};
     }
 }
 
 # --- Acucumulator walkers: fan out, gather at each node, report once at exit ---
 walker load_feed {
     has feed: list[TweetView] = [],
-        reports: list[list[TweetView]] = [],
+        reports: list[dict] = [],
         viewer_username: str = "",
-        seen: set = set();
+        seen: set = set(),
+        t0: float = 0.0;
 
     can run with Root entry {
+        self.t0 = time.perf_counter();
+
         mine = [-->[?:Profile]];
         if mine {
             me = mine[0];
@@ -152,16 +165,21 @@ walker load_feed {
 
     can deliver with Root exit {
         self.feed.sort(key=lambda t: TweetView : t.created_at, reverse=True);
-        report self.feed;
+
+        server_total_ms = (time.perf_counter() - self.t0) * 1000;
+        report {"server_total_ms": server_total_ms, "feed": self.feed};
     }
 }
 
 # --- Create walkers: navigate to the caller's profile, then attach a node ---
 walker create_tweet {
     has content: str,
-        seed_id: str;
+        seed_id: str,
+        reports: list[dict] = [],
+        t0: float = 0.0;
 
     can run with Root entry {
+        self.t0 = time.perf_counter();
         visit [-->[?:Profile]];
     }
 
@@ -177,6 +195,8 @@ walker create_tweet {
         );
 
         grant(new, level=WritePerm);
-        report new.to_view(here.username);
+        tweet = new.to_view(here.username);
+        server_total_ms = (time.perf_counter() - self.t0) * 1000;
+        report {"server_total_ms": server_total_ms, "tweet": tweet};
     }
 }

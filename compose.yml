@@ -1,0 +1,56 @@
+# DBHarness benchmark databases - pinned-resource deployment.
+#
+# CPU layout (20-core machine):
+#   cores 0-5   -> DB containers (this file)
+#   cores 6-13  -> app servers   (taskset in harness/scripts/20-servers.sh)
+#   cores 14-19 -> bench client  (taskset in harness/scripts/65-bench-plot.sh)
+#
+# MIGRATION (one-time, destroys current container data -> full reseed after):
+#   docker rm -f littlex-pg littlex-mongo littlex-neo4j   # old unpinned containers
+#   docker compose up -d                                  # from this directory
+#   ./harness/scripts/30-seed.sh <abs path to seed json>  # named volumes start empty
+#
+# Reproduces the previous hand-run containers exactly (images, env, ports),
+# plus: named volumes (data survives recreate), cpuset pinning, mem limits.
+
+services:
+  littlex-pg:
+    image: postgres:16
+    container_name: littlex-pg
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_DB: littleX
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    cpuset: "0-1"
+    mem_limit: 2g
+
+  littlex-mongo:
+    image: mongo:7
+    container_name: littlex-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    cpuset: "2-3"
+    mem_limit: 2g
+
+  littlex-neo4j:
+    image: neo4j:5
+    container_name: littlex-neo4j
+    environment:
+      NEO4J_AUTH: neo4j/littleXpassword
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_data:/data
+    cpuset: "4-5"
+    mem_limit: 3g   # JVM headroom
+
+volumes:
+  pg_data:
+  mongo_data:
+  neo4j_data:

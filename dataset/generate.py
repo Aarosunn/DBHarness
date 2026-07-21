@@ -18,7 +18,7 @@ SEED = 42
 
 PROFILES = {
     "correctness": {"users": 20, "follows_per_user": 5, "tweets_per_user": 10},
-    "uniform": {"users": 500, "follows_per_user": 50, "tweets_per_user": 100},
+    "uniform": {"users": 100, "follows_per_user": 50, "tweets_per_user": 50},
 }
 
 

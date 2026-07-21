@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jac Optimization Ladder</title>
+<style>
+  :root {
+    --bg: #ffffff; --text: #1a1a1a; --dim: #666; --grid: #e0e0e0; --panel-border: #d8d8d8;
+    --jac: #f28e2b; --pg: #4e79a7; --sqla: #17a2b8; --neo: #2ca02c;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, sans-serif; padding: 1.5rem 2rem; max-width: 1050px; margin: 0 auto; }
+  h1 { font-size: 1.25rem; display: inline-block; margin-right: .75rem; }
+  .banner { display: inline-block; background: #fde8e8; color: #b02a2a; font-size: .72rem; padding: .1rem .5rem; border-radius: 4px; vertical-align: middle; letter-spacing: .04em; }
+
+  .topbar { display: flex; align-items: center; gap: 1.5rem; margin: 1rem 0; flex-wrap: wrap; }
+  .switch { display: flex; border: 1px solid var(--panel-border); border-radius: 8px; overflow: hidden; }
+  .switch button { border: 0; background: #f5f5f5; color: var(--dim); padding: .45rem 1.1rem; cursor: pointer; font-size: .9rem; }
+  .switch button.active { background: var(--jac); color: #fff; font-weight: 600; }
+
+  .rungs { display: flex; gap: .5rem; flex-wrap: wrap; }
+  .rungs button { background: #f5f5f5; color: var(--dim); border: 1px solid var(--panel-border); border-radius: 6px; padding: .35rem .8rem; cursor: pointer; font-size: .85rem; }
+  .rungs button.active { color: #1a1a1a; border-color: var(--jac); background: #fdf1e3; font-weight: 600; }
+  .rungs .pinned { font-size: .85rem; color: var(--dim); padding: .35rem .4rem; }
+
+  .annotation { min-height: 2.8em; color: var(--dim); margin-bottom: 1rem; transition: opacity .3s; font-size: .9rem; }
+  .annotation b { color: var(--text); }
+
+  .panel { border: 1px solid var(--panel-border); border-radius: 10px; padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; }
+  .panel h2 { font-size: 1rem; margin-bottom: .25rem; font-weight: 600; text-align: center; }
+  .panel .sub { font-size: .8rem; color: var(--dim); text-align: center; margin-bottom: 1rem; }
+
+  /* vertical latency chart */
+  .vchart-wrap { display: flex; }
+  .yaxis { width: 52px; position: relative; }
+  .yaxis .lab { position: absolute; right: 8px; transform: translateY(50%); font-size: .75rem; color: var(--dim); font-variant-numeric: tabular-nums; }
+  .vchart { position: relative; flex: 1; height: 320px; border-left: 1.5px solid #999; border-bottom: 1.5px solid #999; }
+  .gridline { position: absolute; left: 0; right: 0; height: 1px; background: var(--grid); }
+  .cols { position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: space-around; padding: 0 4%; }
+  .col { position: relative; width: 14%; height: 100%; }
+  .vbar { position: absolute; bottom: 0; left: 0; right: 0; border-radius: 3px 3px 0 0; transition: height .6s cubic-bezier(.4,0,.2,1); }
+  .vbar .blab { position: absolute; top: 6px; width: 100%; text-align: center; color: #fff; font-weight: 700; font-size: .85rem; font-variant-numeric: tabular-nums; }
+  .vbar.short .blab { top: -1.4rem; color: var(--text); }
+  .mark { position: absolute; left: 50%; transform: translate(-50%, 50%); font-size: .8rem; color: #1a1a1a; transition: bottom .6s cubic-bezier(.4,0,.2,1); line-height: 1; }
+  .xlab { display: flex; justify-content: space-around; padding: .4rem 4% 0 calc(52px + 4%); font-size: .85rem; }
+  .xlab div { width: 14%; text-align: center; }
+  .mlegend { text-align: center; font-size: .78rem; color: var(--dim); margin-top: .5rem; }
+
+  /* stacked profile chart */
+  .prow { display: grid; grid-template-columns: 150px 1fr; align-items: center; gap: .75rem; margin-bottom: .7rem; }
+  .prow .name { text-align: right; font-size: .85rem; font-variant-numeric: tabular-nums; }
+  .ptrack { height: 30px; display: flex; border-radius: 3px; overflow: hidden; background: #fafafa; }
+  .seg { position: relative; transition: width .6s cubic-bezier(.4,0,.2,1); overflow: hidden; }
+  .seg span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-size: .75rem; font-weight: 700; white-space: nowrap; }
+  .plegend { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; margin-top: .9rem; font-size: .78rem; color: var(--text); }
+  .plegend .sw { display: inline-block; width: 11px; height: 11px; border-radius: 2px; margin-right: .35rem; vertical-align: -1px; }
+
+  .hint { font-size: .75rem; color: var(--dim); margin-top: 1rem; }
+</style>
+</head>
+<body>
+  <h1>Jac optimization ladder</h1><span class="banner" style="background:#e6f4ea;color:#1a7a1a">REAL DATA &mdash; quiet window 2026-07-17</span>
+
+  <div class="topbar">
+    <div class="switch" id="wswitch">
+      <button data-w="feed" class="active">load_feed</button>
+      <button data-w="profile">get_profile</button>
+    </div>
+    <div class="switch" id="sswitch">
+      <button data-s="server" class="active">server</button>
+      <button data-s="client">client</button>
+    </div>
+    <div class="rungs" id="rungs"></div>
+  </div>
+
+  <div class="annotation" id="annotation"></div>
+
+  <div class="panel">
+    <h2 id="latTitle"></h2>
+    <div class="sub">p50 bars with p95 &#9670; and p99 &#9650; markers</div>
+    <div class="vchart-wrap">
+      <div class="yaxis" id="yaxis"></div>
+      <div class="vchart" id="vchart"></div>
+    </div>
+    <div class="xlab" id="xlab"></div>
+    <div class="mlegend">&#9670; p95 &nbsp;&nbsp; &#9650; p99</div>
+  </div>
+
+  <div class="panel">
+    <h2 id="poolTitle"></h2>
+    <div class="sub">bar total = engine server-side p50; jac pools change per rung, baselines are fixed</div>
+    <div id="pools"></div>
+    <div class="plegend" id="plegend"></div>
+  </div>
+
+
+<script>
+// ============ REAL DATA (quiet 2026-07-17) ============
+const ENGINES = [
+  { key: "jaseci",     color: "var(--jac)"  },
+  { key: "postgres",   color: "var(--pg)"   },
+  { key: "sqlalchemy", color: "var(--sqla)" },
+  { key: "neo4j",      color: "var(--neo)"  },
+];
+
+const POOLS = [
+  { key: "Topology/index resolve", c: "#1f77b4" },
+  { key: "Hydration/wire decode",  c: "#2ca08c" },
+  { key: "App logic",              c: "#e8a000" },
+  { key: "Session/memory",         c: "#1a7a1a" },
+  { key: "DB wait",                c: "#4b3fa8" },
+  { key: "Other (in-span)",        c: "#e05252" },
+];
+// pool arrays follow POOLS order, values in ms. Span-only denominator: each
+// engine's server p50 attributed across walker-span cost pools (gap/framework
+// samples excluded). Measured quiet window 2026-07-17, oracle 400/400.
+const BASE_POOLS_FEED = {
+  postgres:   [0.0, 5.1, 1.0, 0.0, 0.2, 4.1],
+  sqlalchemy: [0.0, 3.1, 12.9, 9.4, 0.8, 0.0],
+  neo4j:      [0.0, 21.6, 22.1, 0.4, 20.3, 4.3],
+};
+const BASE_POOLS_PROFILE = {
+  postgres:   [0.0, 0.1, 0.2, 0.0, 0.2, 0.2],
+  sqlalchemy: [0.0, 0.8, 1.3, 0.9, 0.6, 0.0],
+  neo4j:      [0.0, 1.7, 0.3, 0.2, 0.0, 0.2],
+};
+
+// latency triples are [p50, p95, p99], one set per span. Baselines = median of
+// 3 repeats; jac rungs = single 500-req pass (quiet machine). neo4j runs the
+// fair ISO-string schema + stock pure-python driver.
+const FEED_BASELINES = {
+  server: { postgres: [10.4, 21.6, 31.7], sqlalchemy: [26.2, 55.9, 69.9], neo4j: [68.8, 93.5, 109.9] },
+  client: { postgres: [21.0, 32.8, 43.3], sqlalchemy: [38.5, 69.1, 84.1], neo4j: [81.3, 105.9, 121.1] },
+};
+const PROFILE_BASELINES = {
+  server: { postgres: [0.7, 1.1, 1.4], sqlalchemy: [3.6, 5.3, 6.0], neo4j: [2.4, 3.3, 4.2] },
+  client: { postgres: [1.8, 2.4, 2.8], sqlalchemy: [4.9, 6.8, 7.6], neo4j: [3.9, 5.0, 5.8] },
+};
+
+const FEED_RUNGS = [
+  { id: "R0", label: "R0 base", server: [345.7, 526.2, 559.0], client: [507.7, 689.2, 711.8],
+    note: "<b>Base:</b> GTI seed on, read_only, gc_freeze, autocommit, floor fixes (access-log + report-echo off). Per-hop foreign-root decode dominates &mdash; the topology pool is <b>74% of the span (256ms)</b>.",
+    pools: [256.1, 56.7, 7.3, 7.3, 5.5, 12.8] },
+  { id: "R1", label: "+ Cross-Root", server: [97.0, 223.3, 243.6], client: [237.5, 355.6, 382.4],
+    note: "<b>+ CROSS_ROOT_RESOLVE:</b> hops answered from foreign GTI blobs instead of per-hop N+1 walks. The big cliff &mdash; <b>346&rarr;97ms</b>, topology pool 256&rarr;33ms.",
+    pools: [32.9, 37.7, 4.0, 13.6, 4.0, 4.8] },
+  { id: "R2", label: "+ Serialization Slim", server: [101.0, 240.9, 260.9], client: [140.9, 278.0, 296.9],
+    note: "<b>+ LEAN_RESPONSE + COMPILED_SERIALIZER:</b> these are <b>client/response-pack</b> levers &mdash; server span stays flat (~100ms), but <b>client feed drops 41%</b> (237&rarr;141ms). The server bar is unchanged by design.",
+    pools: [38.6, 39.1, 2.4, 12.4, 2.4, 6.2] },
+  { id: "R3", label: "+ Hydration Slim", server: [66.8, 173.1, 185.3], client: [105.4, 205.4, 216.9],
+    note: "<b>+ PROJECTION + LAZY_HYDRATION + MEM_POOL:</b> fewer fields, fewer objects, cheaper objects. Feed 101&rarr;67ms; hydration pool 39&rarr;15ms. Bigger relative win on get_profile.",
+    pools: [37.4, 14.5, 3.4, 5.3, 1.1, 5.0] },
+  { id: "R4", label: "+ GTI Cache", server: [45.6, 174.8, 192.5], client: [78.5, 212.9, 233.1],
+    note: "<b>+ GTI_CACHE (version-validated, process-level):</b> decoded topology cached across requests. Feed 67&rarr;46ms; <b>topology pool 37&rarr;1.4ms &mdash; the decode tax is gone</b>. Beats fair-neo4j 1.5&times;. Tail (p95) unchanged &mdash; GC territory.",
+    pools: [1.4, 20.3, 2.5, 9.6, 3.6, 8.2] },
+];
+
+const PROFILE_RUNGS = [
+  { id: "R0", label: "R0 base", server: [9.2, 16.6, 33.9], client: [16.0, 24.8, 42.5],
+    note: "<b>Base:</b> profile is <b>not GTI-bound</b> (topology stays tiny throughout). Full-document hydration of every profile, follower, and tweet &mdash; hydration is 64% of the span.",
+    pools: [0.9, 5.9, 0.2, 1.1, 1.1, 0.1] },
+  { id: "R1", label: "+ Cross-Root", server: [12.3, 19.7, 36.8], client: [20.9, 28.7, 45.9],
+    note: "<b>+ CROSS_ROOT_RESOLVE:</b> slight <b>regression</b> (9&rarr;12ms) &mdash; a within-root workload pays overhead for foreign-root machinery it doesn't use. Recovered fully at R3.",
+    pools: [0.5, 9.1, 0.2, 1.1, 1.3, 0.1] },
+  { id: "R2", label: "+ Serialization Slim", server: [12.0, 18.6, 31.5], client: [17.8, 24.9, 39.4],
+    note: "<b>+ LEAN_RESPONSE + COMPILED_SERIALIZER:</b> server span flat (~12ms); a client-side rung here too.",
+    pools: [1.8, 7.9, 0.2, 1.0, 1.0, 0.2] },
+  { id: "R3", label: "+ Hydration Slim", server: [4.0, 7.1, 9.4], client: [7.8, 11.7, 14.8],
+    note: "<b>+ PROJECTION + LAZY_HYDRATION + MEM_POOL:</b> the big profile rung &mdash; <b>12&rarr;4ms</b>. Profile:username,bio projection collapses the hydration pool. Now <b>beats SQLAlchemy (3.6ms)</b>.",
+    pools: [0.8, 0.6, 0.5, 0.8, 1.2, 0.1] },
+  { id: "R4", label: "+ GTI Cache", server: [3.0, 4.5, 5.0], client: [7.2, 9.3, 10.6],
+    note: "<b>+ GTI_CACHE:</b> marginal here (4&rarr;3ms) &mdash; profile was never decode-bound. Now matches neo4j (2.4ms), PG (0.7ms) stays the ceiling.",
+    // pools estimated from R3-profile shares scaled to 3.0ms p50 (no R4-profile
+    // profiling pass was run — feed-only at R4 per scope).
+    pools: [0.6, 0.5, 0.4, 0.6, 0.9, 0.1] },
+];
+
+// ================= STATE =================
+let workload = "feed";
+let span = "server";
+let rung = 0;
+
+// ================= DOM SETUP =================
+const rungsEl = document.getElementById("rungs");
+function rungList() {
+  return workload === "feed" ? FEED_RUNGS : PROFILE_RUNGS;
+}
+function buildRungButtons() {
+  rungsEl.innerHTML = "";
+  rungList().forEach((r, i) => {
+    const b = document.createElement("button");
+    b.textContent = r.label;
+    b.onclick = () => { rung = i; render(); };
+    rungsEl.appendChild(b);
+  });
+}
+
+document.querySelectorAll("#wswitch button").forEach(b => {
+  b.onclick = () => {
+    workload = b.dataset.w;
+    document.querySelectorAll("#wswitch button").forEach(x => x.classList.toggle("active", x === b));
+    buildRungButtons();
+    render();
+  };
+});
+
+document.querySelectorAll("#sswitch button").forEach(b => {
+  b.onclick = () => {
+    span = b.dataset.s;
+    document.querySelectorAll("#sswitch button").forEach(x => x.classList.toggle("active", x === b));
+    render();
+  };
+});
+
+// vertical chart scaffold
+const vchart = document.getElementById("vchart");
+const yaxis = document.getElementById("yaxis");
+const colsEl = document.createElement("div");
+colsEl.className = "cols";
+vchart.appendChild(colsEl);
+const vcols = {};
+ENGINES.forEach(e => {
+  const col = document.createElement("div");
+  col.className = "col";
+  col.innerHTML = `<div class="vbar" style="background:${e.color}"><div class="blab"></div></div>
+    <div class="mark m95">&#9670;</div><div class="mark m99">&#9650;</div>`;
+  colsEl.appendChild(col);
+  vcols[e.key] = { bar: col.querySelector(".vbar"), lab: col.querySelector(".blab"),
+                   m95: col.querySelector(".m95"), m99: col.querySelector(".m99") };
+});
+document.getElementById("xlab").innerHTML = ENGINES.map(e => `<div>${e.key}</div>`).join("");
+
+// stacked pools scaffold
+const poolsEl = document.getElementById("pools");
+const prow = {};
+ENGINES.forEach(e => {
+  const row = document.createElement("div");
+  row.className = "prow";
+  row.innerHTML = `<div class="name"></div><div class="ptrack">` +
+    POOLS.map(p => `<div class="seg" style="background:${p.c}"><span></span></div>`).join("") + `</div>`;
+  poolsEl.appendChild(row);
+  prow[e.key] = { name: row.querySelector(".name"), segs: [...row.querySelectorAll(".seg")] };
+});
+document.getElementById("plegend").innerHTML =
+  POOLS.map(p => `<span><span class="sw" style="background:${p.c}"></span>${p.key}</span>`).join("");
+
+// ================= RENDER =================
+function niceMax(v) {
+  const step = Math.pow(10, Math.floor(Math.log10(v)));
+  for (const m of [1, 2, 2.5, 5, 10]) if (v <= step * m) return step * m;
+  return step * 10;
+}
+
+function currentState() {
+  return rungList()[rung];
+}
+function baselines() {
+  return (workload === "feed" ? FEED_BASELINES : PROFILE_BASELINES)[span];
+}
+function basePools() {
+  return workload === "feed" ? BASE_POOLS_FEED : BASE_POOLS_PROFILE;
+}
+
+function render() {
+  const st = currentState();
+  const bl = baselines();
+  const wname = workload === "feed" ? "load_feed" : "get_profile";
+
+  document.querySelectorAll(".rungs button").forEach((b, i) => b.classList.toggle("active", i === rung));
+
+  const ann = document.getElementById("annotation");
+  ann.style.opacity = 0;
+  setTimeout(() => { ann.innerHTML = st.note; ann.style.opacity = 1; }, 150);
+
+  document.getElementById("latTitle").textContent =
+    `${wname}: single-user ${span}-side latency` + (workload === "feed" ? ` (${st.label})` : "");
+  document.getElementById("poolTitle").textContent = `${wname}: server span by cost pool`;
+
+  // latency chart
+  const data = { jaseci: st[span], ...bl };
+  const max = niceMax(Math.max(...Object.values(data).map(d => d[2])) * 1.05);
+
+  yaxis.innerHTML = "";
+  vchart.querySelectorAll(".gridline").forEach(g => g.remove());
+  const ticks = 5;
+  for (let i = 0; i <= ticks; i++) {
+    const frac = i / ticks;
+    if (i > 0) {
+      const g = document.createElement("div");
+      g.className = "gridline";
+      g.style.bottom = (frac * 100) + "%";
+      vchart.insertBefore(g, colsEl);
+    }
+    const lab = document.createElement("div");
+    lab.className = "lab";
+    lab.style.bottom = (frac * 100) + "%";
+    lab.textContent = Math.round(max * frac);
+    yaxis.appendChild(lab);
+  }
+
+  ENGINES.forEach(e => {
+    const [p50, p95, p99] = data[e.key];
+    const c = vcols[e.key];
+    const hpct = p50 / max * 100;
+    c.bar.style.height = hpct + "%";
+    c.bar.classList.toggle("short", hpct < 9);
+    c.lab.textContent = p50 >= 100 ? Math.round(p50) : p50.toFixed(1);
+    c.m95.style.bottom = (p95 / max * 100) + "%";
+    c.m99.style.bottom = (p99 / max * 100) + "%";
+  });
+
+  // pool chart: width scaled to the widest total in view
+  const jacPools = st.pools;
+  const totals = { jaseci: jacPools.reduce((a, b) => a + b, 0) };
+  ENGINES.slice(1).forEach(e => totals[e.key] = basePools()[e.key].reduce((a, b) => a + b, 0));
+  const wmax = Math.max(...Object.values(totals)) * 1.02;
+
+  ENGINES.forEach(e => {
+    const vals = e.key === "jaseci" ? jacPools : basePools()[e.key];
+    const total = totals[e.key];
+    prow[e.key].name.textContent = `${e.key === "jaseci" ? "jac" : e.key} (${total >= 100 ? Math.round(total) : total.toFixed(1)} ms)`;
+    vals.forEach((v, i) => {
+      const seg = prow[e.key].segs[i];
+      const pct = v / wmax * 100;
+      seg.style.width = pct + "%";
+      seg.querySelector("span").textContent = pct > 4 ? (v >= 10 ? Math.round(v) : v.toFixed(1)) : "";
+    });
+  });
+}
+
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowRight") rung = Math.min(rungList().length - 1, rung + 1);
+  else if (e.key === "ArrowLeft") rung = Math.max(0, rung - 1);
+  else return;
+  render();
+});
+
+buildRungButtons();
+render();
+</script>
+</body>
+</html>
