@@ -146,8 +146,6 @@ class TweetRead(BaseModel):
     likes: list[str] = []
     comments: list[dict[str, str]] = []
 
-    is_mine: bool = False
-
 
 class TweetCreate(BaseModel):
     content: str
@@ -208,7 +206,6 @@ async def _build_profile_view(
                 created_at=t.created_at,
                 likes=t.likes,
                 comments=t.comments,
-                is_mine=(viewer_id == target_id),
             )
             for t in profile.tweets
         ],
@@ -283,7 +280,6 @@ async def get_feed(
             created_at=t.created_at,
             likes=t.likes,
             comments=t.comments,
-            is_mine=(t.author_id == user_id),
         )
         for t in tweets
     ]
@@ -325,7 +321,6 @@ async def create_tweet(
         created_at=tweet.created_at,
         likes=tweet.likes,
         comments=tweet.comments,
-        is_mine=True,
     )
 
     response.headers["x-server-total-ms"] = f"{(time.perf_counter() - t0) * 1000:.3f}"

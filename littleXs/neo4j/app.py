@@ -85,7 +85,6 @@ class TweetRead(BaseModel):
     created_at: str
     likes: list[str] = []
     comments: list[dict[str, str]] = []
-    is_mine: bool = False
 
 
 class TweetCreate(BaseModel):
@@ -134,7 +133,6 @@ async def _build_profile_view(session, target_id: str, viewer_id: str) -> Profil
     if record is None:
         raise HTTPException(status_code=404, detail="profile not found")
 
-    is_mine = viewer_id == target_id
     tweets = [
         TweetRead(
             id=t["id"],
@@ -145,7 +143,6 @@ async def _build_profile_view(session, target_id: str, viewer_id: str) -> Profil
             created_at=t["created_at"],
             likes=t["likes"],
             comments=t["comments"],
-            is_mine=is_mine,
         )
         for t in record["tweets"]
     ]
@@ -223,7 +220,6 @@ async def get_feed(
             created_at=r["created_at"],
             likes=r["likes"],
             comments=r["comments"],
-            is_mine=(r["author_id"] == user_id),
         )
         for r in records
     ]
@@ -283,7 +279,6 @@ async def create_tweet(
         created_at=record["created_at"],
         likes=[],
         comments=[],
-        is_mine=True,
     )
 
     response.headers["x-server-total-ms"] = f"{(time.perf_counter() - t0) * 1000:.3f}"

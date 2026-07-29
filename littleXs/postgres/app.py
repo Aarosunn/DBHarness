@@ -102,7 +102,6 @@ class TweetRead(BaseModel):
     created_at: datetime
     likes: list[str] = []
     comments: list[dict[str, str]] = []
-    is_mine: bool = False
 
 
 class TweetCreate(BaseModel):
@@ -167,8 +166,6 @@ async def _build_profile_view(
         UserSummary(id=r[0], username=r[1], bio=r[2]) for r in await cur.fetchall()
     ]
 
-    is_mine = viewer_id == target_id
-
     cur = await conn.execute(OWN_TWEETS_SQL, (target_id,))
     tweets = [
         TweetRead(
@@ -180,7 +177,6 @@ async def _build_profile_view(
             created_at=r[4],
             likes=r[5],
             comments=r[6],
-            is_mine=is_mine,
         )
         for r in await cur.fetchall()
     ]
@@ -253,7 +249,6 @@ async def get_feed(response: Response, user_id: int = Depends(get_current_user_i
             created_at=r[5],
             likes=r[6],
             comments=r[7],
-            is_mine=(r[2] == user_id),
         )
         for r in rows
     ]
@@ -308,7 +303,6 @@ async def create_tweet(
         created_at=created_at,
         likes=[],
         comments=[],
-        is_mine=True,
     )
 
     response.headers["x-server-total-ms"] = f"{(time.perf_counter() - t0) * 1000:.3f}"
