@@ -1,6 +1,12 @@
 """
 LittleX backend, tuned to match GTI and FP experiments
 Database abstracted in the language runtime research
+
+Upstream node-report idiom (jaseci-labs/jaseci #7548): walkers report graph
+nodes and typed bundles directly — identity travels as _jac_id, no view DTOs,
+no server-side is_mine (client derives it from author_username). Harness
+specifics kept: seed_id, in-walker server_total_ms timing envelope, feed
+dedup, get_profile_by_id, created_at desc ordering.
 """
 
 import datetime;
@@ -11,60 +17,32 @@ def _now -> str {
     return datetime.datetime.now(datetime.UTC).replace(tzinfo=None).isoformat() + "Z";
 }
 
-# --- View models: the typed contract returned to the client ---
-obj UserView {
-    has id: str,
-        username: str,
-        bio: str = "";
-}
-
-obj ProfileView {
-    has id: str,
-        username: str,
-        bio: str,
-        followers: list[UserView],
-        following: list[UserView],
-        tweets: list[TweetView];
-}
-
-obj TweetView {
-    has id: str,
-        seed_id: str,
-        content: str,
-        author_username: str,
-        created_at: str,
-        likes: list[str],
-        comments: list[dict[str, str]],
-        is_mine: bool = False;
-}
-
 # --- Edges: the relationships in the social graph ---
 edge Follow {}
 edge Post {}
 
+# --- Report bundle: a node plus the edge-derived context the client needs
+#     alongside it. The node travels whole - identity included. ---
+obj ProfileBundle {
+    has profile: Profile,
+        followers: list[Profile],
+        following: list[Profile],
+        tweets: list[Tweet];
+}
 
-# --- Graph nodes: data, plus the methods that present it as a view.
-#     A node knows how to describe itself; walkers decide when to ask. ---
+# --- Graph nodes ---
 node Profile {
     has username: str = "",
         bio: str = "",
         created_at: str = "";
 
-    def to_user_view -> UserView {
-        return UserView(id=jid(self), username=self.username, bio=self.bio);
-    }
-
-    def to_profile_view(viewer_username: str) -> ProfileView {
-        followers = [p.to_user_view() for p in [self<-:Follow:<-[?:Profile]]];
-        following = [p.to_user_view() for p in [self->:Follow:->[?:Profile]]];
-        tweets = [t.to_view(viewer_username) for t in [self-->[?:Tweet]]];
-        tweets.sort(key=lambda t: TweetView : t.created_at, reverse=True);
-        return ProfileView(
-            id=jid(self),
-            username=self.username,
-            bio=self.bio,
-            followers=followers,
-            following=following,
+    def to_bundle -> ProfileBundle {
+        tweets = [self-->[?:Tweet]];
+        tweets.sort(key=lambda t: Tweet : t.created_at, reverse=True);
+        return ProfileBundle(
+            profile=self,
+            followers=[self<-:Follow:<-[?:Profile]],
+            following=[self->:Follow:->[?:Profile]],
             tweets=tweets
         );
     }
@@ -77,20 +55,8 @@ node Tweet {
         created_at: str = "",
         likes: list[str] = [],
         comments: list[dict[str, str]] = [];
-
-    def to_view(viewer_username: str) -> TweetView {
-        return TweetView(
-            id=jid(self),
-            seed_id=self.seed_id,
-            content=self.content,
-            author_username=self.author_username,
-            created_at=self.created_at,
-            likes=self.likes,
-            comments=self.comments,
-            is_mine=(self.author_username == viewer_username)
-        );
-    }
 }
+
 # --- Profile walkers: spawn at the caller's root, act on their profile ---
 walker get_profile {
     has reports: list[dict] = [],
@@ -102,25 +68,19 @@ walker get_profile {
     }
 
     can give with Profile entry {
-        profile = here.to_profile_view(here.username);
+        bundle = here.to_bundle();
         server_total_ms = (time.perf_counter() - self.t0) * 1000;
-        report {"server_total_ms": server_total_ms, "profile": profile};
+        report {"server_total_ms": server_total_ms, "profile": bundle};
     }
 }
 
 walker get_profile_by_id {
     has target_id: str = "",
-        viewer_username: str = "",
         reports: list[dict] = [],
         t0: float = 0.0;
 
     can run with Root entry {
         self.t0 = time.perf_counter();
-
-        mine = [-->[?:Profile]];
-        if mine {
-            self.viewer_username = mine[0].username;
-        }
         if self.target_id {
             target = jobj(self.target_id);
             if isinstance(target, Profile) {
@@ -130,17 +90,16 @@ walker get_profile_by_id {
     }
 
     can give with Profile entry {
-        profile = here.to_profile_view(self.viewer_username);
+        bundle = here.to_bundle();
         server_total_ms = (time.perf_counter() - self.t0) * 1000;
-        report {"server_total_ms": server_total_ms, "profile": profile};
+        report {"server_total_ms": server_total_ms, "profile": bundle};
     }
 }
 
-# --- Acucumulator walkers: fan out, gather at each node, report once at exit ---
+# --- Accumulator walkers: fan out, gather at each node, report once at exit ---
 walker load_feed {
-    has feed: list[TweetView] = [],
+    has feed: list[Tweet] = [],
         reports: list[dict] = [],
-        viewer_username: str = "",
         seen: set = set(),
         t0: float = 0.0;
 
@@ -150,7 +109,6 @@ walker load_feed {
         mine = [-->[?:Profile]];
         if mine {
             me = mine[0];
-            self.viewer_username = me.username;
             visit [me-->[?:Tweet]];
             visit [me->:Follow:->[?:Profile]-->[?:Tweet]];
         }
@@ -159,12 +117,12 @@ walker load_feed {
     can gather with Tweet entry {
         if jid(here) not in self.seen {
             self.seen.add(jid(here));
-            self.feed.append(here.to_view(self.viewer_username));
+            self.feed.append(here);
         }
     }
 
     can deliver with Root exit {
-        self.feed.sort(key=lambda t: TweetView : t.created_at, reverse=True);
+        self.feed.sort(key=lambda t: Tweet : t.created_at, reverse=True);
 
         server_total_ms = (time.perf_counter() - self.t0) * 1000;
         report {"server_total_ms": server_total_ms, "feed": self.feed};
@@ -195,8 +153,7 @@ walker create_tweet {
         );
 
         grant(new, level=WritePerm);
-        tweet = new.to_view(here.username);
         server_total_ms = (time.perf_counter() - self.t0) * 1000;
-        report {"server_total_ms": server_total_ms, "tweet": tweet};
+        report {"server_total_ms": server_total_ms, "tweet": new};
     }
 }
