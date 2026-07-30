@@ -10,6 +10,7 @@ import from app {
     get_profile,
     get_profile_by_id,
     load_feed,
+    load_feed_leaf,
     create_tweet
 }
 

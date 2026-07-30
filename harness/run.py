@@ -97,8 +97,15 @@ def fetch_create_tweet(client, engine, token, i):
 
 
 # name -> fetch(client, engine, token, i) -> (result, server_ms)
+def fetch_feed_leaf(client, engine, token, i):
+    """jaseci-only: leaf-materialized feed (JAC_LEAF_MATERIALIZE server)."""
+    payload, srv = _jac_walker(client, "load_feed_leaf", {}, token)
+    return payload["feed"], srv
+
+
 WORKLOADS = {
     "feed": fetch_feed,
+    "feed_leaf": fetch_feed_leaf,
     "profile": fetch_profile,
     "create_tweet": fetch_create_tweet,
 }

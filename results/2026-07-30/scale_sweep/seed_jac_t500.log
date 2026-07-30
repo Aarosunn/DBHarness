@@ -1,0 +1,7 @@
+registered/logged in 100 users
+seeded 100 profiles
+seeded 50000 tweets
+seeded 5000 follows
+done: 100 users, 100 profiles, 50000 tweets, 5000 follows
+wrote /home/aaron/Dev/Research/DatabaseResearch/DBHarness/harness/tokens/tokens.jaseci.json and /home/aaron/Dev/Research/DatabaseResearch/DBHarness/harness/tokens/jids.jaseci.json
+JAC T500 SEEDED, tokens -> tokens-t500/

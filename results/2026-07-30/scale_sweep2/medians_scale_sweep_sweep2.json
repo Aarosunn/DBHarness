@@ -1,0 +1,402 @@
+{
+ "t20:postgres:feed": {
+  "tweets_per_user": 20,
+  "feed_rows": 1020,
+  "requests": 500,
+  "errors": 0,
+  "server": [
+   3.72,
+   6.76,
+   15.646
+  ],
+  "client": [
+   7.123,
+   10.597,
+   19.318
+  ]
+ },
+ "t20:sqlalchemy:feed": {
+  "tweets_per_user": 20,
+  "feed_rows": 1020,
+  "requests": 500,
+  "errors": 0,
+  "server": [
+   8.421,
+   25.889,
+   28.866
+  ],
+  "client": [
+   12.073,
+   29.92,
+   33.41
+  ]
+ },
+ "t20:jaseci:feed_leaf": {
+  "tweets_per_user": 20,
+  "feed_rows": 1020,
+  "requests": 500,
+  "errors": 0,
+  "server": [
+   18.322,
+   28.124,
+   35.455
+  ],
+  "client": [
+   26.077,
+   35.67,
+   43.014
+  ]
+ },
+ "t20:jaseci:feed": {
+  "tweets_per_user": 20,
+  "feed_rows": 1020,
+  "requests": 500,
+  "errors": 0,
+  "server": [
+   25.573,
+   37.666,
+   70.14
+  ],
+  "client": [
+   38.299,
+   56.017,
+   85.648
+  ]
+ },
+ "t20:neo4j:feed": {
+  "tweets_per_user": 20,
+  "feed_rows": 1020,
+  "requests": 500,
+  "errors": 0,
+  "server": [
+   22.497,
+   33.791,
+   40.774
+  ],
+  "client": [
+   26.418,
+   37.547,
+   45.446
+  ]
+ },
+ "t50:postgres:feed": {
+  "tweets_per_user": 50,
+  "feed_rows": 2550,
+  "requests": 500,
+  "errors": 0,
+  "server": [
+   11.775,
+   24.268,
+   37.499
+  ],
+  "client": [
+   21.031,
+   35.67,
+   50.823
+  ]
+ },
+ "t50:sqlalchemy:feed": {
+  "tweets_per_user": 50,
+  "feed_rows": 2550,
+  "requests": 500,
+  "errors": 0,
+  "server": [
+   25.344,
+   53.847,
+   65.89
+  ],
+  "client": [
+   35.239,
+   64.715,
+   80.853
+  ]
+ },
+ "t50:jaseci:feed_leaf": {
+  "tweets_per_user": 50,
+  "feed_rows": 2550,
+  "requests": 500,
+  "errors": 0,
+  "server": [
+   39.388,
+   71.512,
+   81.606
+  ],
+  "client": [
+   52.965,
+   85.909,
+   95.178
+  ]
+ },
+ "t50:jaseci:feed": {
+  "tweets_per_user": 50,
+  "feed_rows": 2550,
+  "requests": 500,
+  "errors": 0,
+  "server": [
+   53.392,
+   190.42,
+   205.968
+  ],
+  "client": [
+   76.385,
+   219.784,
+   232.531
+  ]
+ },
+ "t50:neo4j:feed": {
+  "tweets_per_user": 50,
+  "feed_rows": 2550,
+  "requests": 500,
+  "errors": 0,
+  "server": [
+   64.102,
+   80.172,
+   94.311
+  ],
+  "client": [
+   73.439,
+   90.426,
+   103.955
+  ]
+ },
+ "t100:postgres:feed": {
+  "tweets_per_user": 100,
+  "feed_rows": 5100,
+  "requests": 500,
+  "errors": 0,
+  "server": [
+   23.182,
+   40.413,
+   48.638
+  ],
+  "client": [
+   39.422,
+   57.037,
+   71.975
+  ]
+ },
+ "t100:sqlalchemy:feed": {
+  "tweets_per_user": 100,
+  "feed_rows": 5100,
+  "requests": 500,
+  "errors": 0,
+  "server": [
+   53.276,
+   81.104,
+   95.331
+  ],
+  "client": [
+   71.492,
+   99.321,
+   116.74
+  ]
+ },
+ "t100:jaseci:feed_leaf": {
+  "tweets_per_user": 100,
+  "feed_rows": 5100,
+  "requests": 500,
+  "errors": 0,
+  "server": [
+   69.721,
+   163.283,
+   190.126
+  ],
+  "client": [
+   94.394,
+   187.729,
+   211.953
+  ]
+ },
+ "t100:jaseci:feed": {
+  "tweets_per_user": 100,
+  "feed_rows": 5100,
+  "requests": 500,
+  "errors": 0,
+  "server": [
+   100.225,
+   307.551,
+   332.465
+  ],
+  "client": [
+   145.842,
+   353.415,
+   381.432
+  ]
+ },
+ "t100:neo4j:feed": {
+  "tweets_per_user": 100,
+  "feed_rows": 5100,
+  "requests": 500,
+  "errors": 0,
+  "server": [
+   129.947,
+   152.051,
+   164.539
+  ],
+  "client": [
+   146.874,
+   170.044,
+   179.513
+  ]
+ },
+ "t200:postgres:feed": {
+  "tweets_per_user": 200,
+  "feed_rows": 10200,
+  "requests": 500,
+  "errors": 0,
+  "server": [
+   43.922,
+   69.038,
+   82.717
+  ],
+  "client": [
+   74.31,
+   99.166,
+   124.757
+  ]
+ },
+ "t200:sqlalchemy:feed": {
+  "tweets_per_user": 200,
+  "feed_rows": 10200,
+  "requests": 500,
+  "errors": 0,
+  "server": [
+   121.533,
+   140.062,
+   147.467
+  ],
+  "client": [
+   153.809,
+   173.757,
+   181.596
+  ]
+ },
+ "t200:jaseci:feed_leaf": {
+  "tweets_per_user": 200,
+  "feed_rows": 10200,
+  "requests": 500,
+  "errors": 0,
+  "server": [
+   133.625,
+   239.737,
+   442.127
+  ],
+  "client": [
+   178.919,
+   280.12,
+   479.63
+  ]
+ },
+ "t200:jaseci:feed": {
+  "tweets_per_user": 200,
+  "feed_rows": 10200,
+  "requests": 500,
+  "errors": 0,
+  "server": [
+   206.145,
+   492.387,
+   503.468
+  ],
+  "client": [
+   297.948,
+   571.78,
+   585.809
+  ]
+ },
+ "t200:neo4j:feed": {
+  "tweets_per_user": 200,
+  "feed_rows": 10200,
+  "requests": 500,
+  "errors": 0,
+  "server": [
+   274.63,
+   298.935,
+   312.108
+  ],
+  "client": [
+   304.754,
+   331.269,
+   346.913
+  ]
+ },
+ "t500:postgres:feed": {
+  "tweets_per_user": 500,
+  "feed_rows": 25500,
+  "requests": 500,
+  "errors": 0,
+  "server": [
+   129.309,
+   154.308,
+   170.491
+  ],
+  "client": [
+   199.014,
+   226.339,
+   247.228
+  ]
+ },
+ "t500:sqlalchemy:feed": {
+  "tweets_per_user": 500,
+  "feed_rows": 25500,
+  "requests": 500,
+  "errors": 0,
+  "server": [
+   330.99,
+   348.554,
+   356.653
+  ],
+  "client": [
+   413.358,
+   432.118,
+   442.316
+  ]
+ },
+ "t500:jaseci:feed_leaf": {
+  "tweets_per_user": 500,
+  "feed_rows": 25500,
+  "requests": 500,
+  "errors": 0,
+  "server": [
+   333.444,
+   645.437,
+   1061.371
+  ],
+  "client": [
+   434.779,
+   739.496,
+   1162.965
+  ]
+ },
+ "t500:jaseci:feed": {
+  "tweets_per_user": 500,
+  "feed_rows": 25500,
+  "requests": 500,
+  "errors": 0,
+  "server": [
+   845.746,
+   1023.832,
+   1110.008
+  ],
+  "client": [
+   1125.06,
+   1256.881,
+   1312.331
+  ]
+ },
+ "t500:neo4j:feed": {
+  "tweets_per_user": 500,
+  "feed_rows": 25500,
+  "requests": 500,
+  "errors": 0,
+  "server": [
+   691.429,
+   734.473,
+   756.982
+  ],
+  "client": [
+   772.204,
+   817.932,
+   837.193
+  ]
+ }
+}

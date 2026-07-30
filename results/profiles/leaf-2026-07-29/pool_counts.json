@@ -1,0 +1,45 @@
+{
+ "anchor": {
+  "n": 247,
+  "pools": {
+   "serialize": 99,
+   "visit_dispatch": 23,
+   "bson_decode": 11,
+   "uuid": 13,
+   "build_object": 60,
+   "mongo_plan": 12,
+   "other": 9,
+   "value_decode": 5,
+   "topology": 5,
+   "db_wait": 5,
+   "app": 4,
+   "memory_l1l2": 1
+  },
+  "zones": {
+   "gap": 99,
+   "span": 138,
+   "framework": 10
+  }
+ },
+ "leaf": {
+  "n": 191,
+  "pools": {
+   "mongo_plan": 19,
+   "db_wait": 15,
+   "serialize": 74,
+   "topology": 5,
+   "visit_dispatch": 1,
+   "app": 4,
+   "uuid": 19,
+   "bson_decode": 35,
+   "other": 12,
+   "resolver": 3,
+   "value_decode": 4
+  },
+  "zones": {
+   "span": 105,
+   "framework": 15,
+   "gap": 71
+  }
+ }
+}

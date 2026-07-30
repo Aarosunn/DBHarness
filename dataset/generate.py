@@ -19,6 +19,13 @@ SEED = 42
 PROFILES = {
     "correctness": {"users": 20, "follows_per_user": 5, "tweets_per_user": 10},
     "uniform": {"users": 100, "follows_per_user": 50, "tweets_per_user": 50},
+    # tweets-per-user scaling sweep (T50 = the existing uniform cohort).
+    # prefix is baked into ids AND usernames: cohorts coexist in the shared
+    # DBs as disjoint follow-graphs (logical namespaces, seeded once).
+    "t20":  {"users": 100, "follows_per_user": 50, "tweets_per_user": 20,  "prefix": "t20_"},
+    "t100": {"users": 100, "follows_per_user": 50, "tweets_per_user": 100, "prefix": "t100_"},
+    "t200": {"users": 100, "follows_per_user": 50, "tweets_per_user": 200, "prefix": "t200_"},
+    "t500": {"users": 100, "follows_per_user": 50, "tweets_per_user": 500, "prefix": "t500_"},
 }
 
 
@@ -33,12 +40,13 @@ def build(profile_name):
 
     cfg = PROFILES[profile_name]
     n_users, k_follows, tpu = cfg["users"], cfg["follows_per_user"], cfg["tweets_per_user"]
+    px = cfg.get("prefix", "")
 
     random.seed(SEED)  # mandatory: byte-identical output across runs
     pool = load_pool()
 
     profiles = [
-        {"id": f"user_{i}", "username": f"sim_user_{i}", "bio": ""}
+        {"id": f"{px}user_{i}", "username": f"{px}sim_user_{i}", "bio": ""}
         for i in range(n_users)
     ]
 
@@ -46,7 +54,7 @@ def build(profile_name):
     for i in range(n_users):
         candidates = [j for j in range(n_users) if j != i]
         for j in random.sample(candidates, min(k_follows, len(candidates))):
-            follows.append({"follower": f"user_{i}", "followee": f"user_{j}"})
+            follows.append({"follower": f"{px}user_{i}", "followee": f"{px}user_{j}"})
 
     tweets = []
     tweet_id = 0
@@ -57,8 +65,8 @@ def build(profile_name):
             time_index = r * n_users + i
             created_at = (BASE_TIME + timedelta(seconds=time_index * 5)).strftime("%Y-%m-%dT%H:%M:%SZ")
             tweets.append({
-                "id": f"tweet_{tweet_id}",
-                "author": f"user_{i}",
+                "id": f"{px}tweet_{tweet_id}",
+                "author": f"{px}user_{i}",
                 "created_at": created_at,
                 "content": pool[tweet_id % len(pool)],
                 "likes": [],

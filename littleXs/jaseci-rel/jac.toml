@@ -21,7 +21,7 @@ jaseci_repo_url = "https://github.com/cse584-W26/jaseci.git"
 jaseci_branch = "fp-new-main"
 
 [dev]
-jaclang_source = "/home/aaron/Dev/Research/DatabaseResearch/JaseciFork-pgrel/jac"
+jaclang_source = "/home/aaron/Dev/Research/DatabaseResearch/JaseciFork/jac"
 
 [dependencies.npm]
 react = "^18.2.0"

@@ -129,6 +129,37 @@ walker load_feed {
     }
 }
 
+# Leaf-materialized feed (requires JAC_LEAF_MATERIALIZE=Tweet): expression
+# reads return tweets as plain projected dicts -- no Tweet objects are built.
+# Mongo sorts each stream (JAC_ORDER_PUSHDOWN) and dedup keys on _jac_id;
+# the walker only merges the two dict streams.
+walker load_feed_leaf {
+    has reports: list[dict] = [],
+        t0: float = 0.0;
+
+    can run with Root entry {
+        self.t0 = time.perf_counter();
+
+        feed: list = [];
+        mine = [-->[?:Profile]];
+        if mine {
+            me = mine[0];
+            seen: set = set();
+            for t in [me-->[?:Tweet]] + [me->:Follow:->[?:Profile]-->[?:Tweet]] {
+                tid = t['_jac_id'];
+                if tid not in seen {
+                    seen.add(tid);
+                    feed.append(t);
+                }
+            }
+            feed.sort(key=lambda d: dict : d['created_at'], reverse=True);
+        }
+
+        server_total_ms = (time.perf_counter() - self.t0) * 1000;
+        report {"server_total_ms": server_total_ms, "feed": feed};
+    }
+}
+
 # --- Create walkers: navigate to the caller's profile, then attach a node ---
 walker create_tweet {
     has content: str,

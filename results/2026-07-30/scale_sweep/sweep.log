@@ -1,0 +1,169 @@
+===== LEVEL t20 (db=littleX_t20, req=500) =====
+pg+sqla now on littleX_t20
+=== postgres / feed ===
+  server p50=8.411ms p95=8.651ms p99=8.651ms (client p50=14.484ms) errors=0
+
+=== sqlalchemy / feed ===
+  server p50=7.938ms p95=21.177ms p99=21.177ms (client p50=12.06ms) errors=0
+
+=== neo4j / feed ===
+  server p50=21.469ms p95=24.42ms p99=24.42ms (client p50=25.261ms) errors=0
+
+wrote /home/aaron/Dev/Research/DatabaseResearch/DBHarness/results/csv/smoke_t20.csv
+=== jaseci / feed ===
+  server p50=26.822ms p95=32.168ms p99=32.168ms (client p50=39.981ms) errors=0
+
+=== jaseci / feed_leaf ===
+  server p50=13.913ms p95=14.64ms p99=14.64ms (client p50=22.387ms) errors=0
+
+wrote /home/aaron/Dev/Research/DatabaseResearch/DBHarness/results/csv/smoke_t20.csv
+--- smoke ok, timed runs ---
+=== postgres / feed ===
+  server p50=3.499ms p95=6.616ms p99=16.616ms (client p50=6.631ms) errors=0
+
+=== sqlalchemy / feed ===
+  server p50=8.688ms p95=26.605ms p99=33.528ms (client p50=12.559ms) errors=0
+
+=== neo4j / feed ===
+  server p50=23.188ms p95=35.031ms p99=52.42ms (client p50=27.163ms) errors=0
+
+wrote /home/aaron/Dev/Research/DatabaseResearch/DBHarness/results/csv/sweep_t20_baselines.csv
+=== jaseci / feed ===
+  server p50=25.941ms p95=39.474ms p99=94.807ms (client p50=39.347ms) errors=0
+
+wrote /home/aaron/Dev/Research/DatabaseResearch/DBHarness/results/csv/sweep_t20_jacanchor.csv
+=== jaseci / feed_leaf ===
+  server p50=19.682ms p95=30.617ms p99=60.08ms (client p50=29.852ms) errors=0
+
+wrote /home/aaron/Dev/Research/DatabaseResearch/DBHarness/results/csv/sweep_t20_jacleaf.csv
+===== LEVEL t20 DONE =====
+===== LEVEL t50 (db=littleX, req=500) =====
+pg+sqla now on littleX
+Traceback (most recent call last):
+  File "/home/aaron/Dev/Research/DatabaseResearch/DBHarness/harness/run.py", line 239, in <module>
+    main()
+    ~~~~^^
+  File "/home/aaron/Dev/Research/DatabaseResearch/DBHarness/harness/run.py", line 205, in main
+    tokens = load_tokens(engine, Path(args.tokens_dir))
+  File "/home/aaron/Dev/Research/DatabaseResearch/DBHarness/harness/oracle.py", line 71, in load_tokens
+    raise FileNotFoundError(f"no tokens.{engine}.json in {tokens_dir}")
+FileNotFoundError: no tokens.postgres.json in tokens-t50
+===== LEVEL t50 (db=littleX, req=500) =====
+pg+sqla now on littleX
+=== postgres / feed ===
+  server p50=10.412ms p95=12.301ms p99=12.301ms (client p50=20.11ms) errors=0
+
+=== sqlalchemy / feed ===
+  server p50=39.048ms p95=42.132ms p99=42.132ms (client p50=48.207ms) errors=0
+
+=== neo4j / feed ===
+  server p50=51.454ms p95=51.471ms p99=51.471ms (client p50=58.376ms) errors=0
+
+wrote /home/aaron/Dev/Research/DatabaseResearch/DBHarness/results/csv/smoke_t50.csv
+=== jaseci / feed ===
+  server p50=68.76ms p95=71.236ms p99=71.236ms (client p50=93.359ms) errors=0
+
+=== jaseci / feed_leaf ===
+  server p50=46.111ms p95=47.54ms p99=47.54ms (client p50=64.97ms) errors=0
+
+wrote /home/aaron/Dev/Research/DatabaseResearch/DBHarness/results/csv/smoke_t50.csv
+--- smoke ok, timed runs ---
+=== postgres / feed ===
+  server p50=9.13ms p95=20.147ms p99=25.889ms (client p50=16.262ms) errors=0
+
+=== sqlalchemy / feed ===
+  server p50=24.668ms p95=47.484ms p99=54.694ms (client p50=33.981ms) errors=0
+
+=== neo4j / feed ===
+  server p50=63.667ms p95=81.019ms p99=95.482ms (client p50=72.745ms) errors=0
+
+wrote /home/aaron/Dev/Research/DatabaseResearch/DBHarness/results/csv/sweep_t50_baselines.csv
+=== jaseci / feed ===
+  server p50=53.283ms p95=66.585ms p99=81.821ms (client p50=77.803ms) errors=0
+
+wrote /home/aaron/Dev/Research/DatabaseResearch/DBHarness/results/csv/sweep_t50_jacanchor.csv
+=== jaseci / feed_leaf ===
+  server p50=40.862ms p95=51.02ms p99=84.126ms (client p50=59.674ms) errors=0
+
+wrote /home/aaron/Dev/Research/DatabaseResearch/DBHarness/results/csv/sweep_t50_jacleaf.csv
+===== LEVEL t50 DONE =====
+===== LEVEL t100 (db=littleX_t100, req=500) =====
+pg+sqla now on littleX_t100
+=== postgres / feed ===
+  server p50=18.669ms p95=25.637ms p99=25.637ms (client p50=36.141ms) errors=0
+
+=== sqlalchemy / feed ===
+  server p50=38.881ms p95=74.713ms p99=74.713ms (client p50=54.571ms) errors=0
+
+=== neo4j / feed ===
+  server p50=109.585ms p95=130.691ms p99=130.691ms (client p50=124.831ms) errors=0
+
+wrote /home/aaron/Dev/Research/DatabaseResearch/DBHarness/results/csv/smoke_t100.csv
+=== jaseci / feed ===
+  server p50=104.502ms p95=130.961ms p99=130.961ms (client p50=157.873ms) errors=0
+
+=== jaseci / feed_leaf ===
+  server p50=59.564ms p95=60.235ms p99=60.235ms (client p50=90.195ms) errors=0
+
+wrote /home/aaron/Dev/Research/DatabaseResearch/DBHarness/results/csv/smoke_t100.csv
+--- smoke ok, timed runs ---
+=== postgres / feed ===
+  server p50=21.398ms p95=39.949ms p99=46.032ms (client p50=37.102ms) errors=0
+
+=== sqlalchemy / feed ===
+  server p50=49.002ms p95=81.369ms p99=86.209ms (client p50=67.473ms) errors=0
+
+=== neo4j / feed ===
+  server p50=130.049ms p95=148.874ms p99=167.838ms (client p50=146.89ms) errors=0
+
+wrote /home/aaron/Dev/Research/DatabaseResearch/DBHarness/results/csv/sweep_t100_baselines.csv
+=== jaseci / feed ===
+  server p50=104.592ms p95=344.722ms p99=358.542ms (client p50=149.24ms) errors=0
+
+wrote /home/aaron/Dev/Research/DatabaseResearch/DBHarness/results/csv/sweep_t100_jacanchor.csv
+=== jaseci / feed_leaf ===
+  server p50=72.44ms p95=86.468ms p99=120.15ms (client p50=107.123ms) errors=0
+
+wrote /home/aaron/Dev/Research/DatabaseResearch/DBHarness/results/csv/sweep_t100_jacleaf.csv
+===== LEVEL t100 DONE =====
+===== LEVEL t200 (db=littleX_t200, req=300) =====
+pg+sqla now on littleX_t200
+=== postgres / feed ===
+  server p50=43.205ms p95=82.584ms p99=82.584ms (client p50=77.658ms) errors=0
+
+=== sqlalchemy / feed ===
+  server p50=111.224ms p95=124.286ms p99=124.286ms (client p50=140.947ms) errors=0
+
+=== neo4j / feed ===
+  server p50=223.258ms p95=266.074ms p99=266.074ms (client p50=254.049ms) errors=0
+
+wrote /home/aaron/Dev/Research/DatabaseResearch/DBHarness/results/csv/smoke_t200.csv
+=== jaseci / feed ===
+  server p50=273.896ms p95=416.953ms p99=416.953ms (client p50=373.906ms) errors=0
+
+=== jaseci / feed_leaf ===
+  server p50=145.515ms p95=154.747ms p99=154.747ms (client p50=221.25ms) errors=0
+
+wrote /home/aaron/Dev/Research/DatabaseResearch/DBHarness/results/csv/smoke_t200.csv
+--- smoke ok, timed runs ---
+=== postgres / feed ===
+  server p50=48.188ms p95=72.31ms p99=88.295ms (client p50=78.881ms) errors=0
+
+=== sqlalchemy / feed ===
+  server p50=123.43ms p95=148.931ms p99=161.836ms (client p50=155.202ms) errors=0
+
+=== neo4j / feed ===
+  server p50=275.069ms p95=306.601ms p99=331.149ms (client p50=305.049ms) errors=0
+
+wrote /home/aaron/Dev/Research/DatabaseResearch/DBHarness/results/csv/sweep_t200_baselines.csv
+=== jaseci / feed ===
+  server p50=218.656ms p95=511.268ms p99=523.304ms (client p50=309.904ms) errors=0
+
+wrote /home/aaron/Dev/Research/DatabaseResearch/DBHarness/results/csv/sweep_t200_jacanchor.csv
+=== jaseci / feed_leaf ===
+  server p50=135.512ms p95=154.009ms p99=390.77ms (client p50=204.43ms) errors=0
+
+wrote /home/aaron/Dev/Research/DatabaseResearch/DBHarness/results/csv/sweep_t200_jacleaf.csv
+===== LEVEL t200 DONE =====
+pg+sqla now on littleX
+SWEEP DONE
